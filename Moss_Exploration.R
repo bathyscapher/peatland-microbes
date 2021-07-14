@@ -353,7 +353,7 @@ mossMeta <- merge(mossMeta, det.nmds.sc, by = c("Site", "Sector"))
 
 
 ### Export data
-# write.table(mossMeta, "Mosses_Metadata_unscaled.csv", sep = "\t",
+# write.table(mossMeta, "csv/Mosses_Metadata_unscaled.csv", sep = "\t",
 #             row.names = FALSE)
 
 
@@ -438,7 +438,7 @@ dev.off()
 
 
 ### Export data
-# write.table(mossMeta, "Mosses_Metadata_scaled.csv", sep = "\t",
+# write.table(mossMeta, "csv/Mosses_Metadata_scaled.csv", sep = "\t",
 #             row.names = FALSE)
 
 
