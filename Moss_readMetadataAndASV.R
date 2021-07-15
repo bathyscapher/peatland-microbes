@@ -64,7 +64,7 @@ merge.mosses = c(TRUE, FALSE)) {
 
   ##############################################################################
   ### Remove non-moss samples
-  smpMeta <- read.table("~/repos/peatland-microbes/smpMeta.csv",
+  smpMeta <- read.table("~/repos/peatland-microbes/csv/smpMeta.csv",
                          sep = "\t", header = TRUE, row.names = 1)
   smpMeta$FullID <- rownames(smpMeta)
 
