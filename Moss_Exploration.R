@@ -3,7 +3,7 @@
 ################################################################################
 ################################################################################
 ### SMP Moss Microbiome
-### Author: korn@cumulonimbus.at University of Fribourg 2020
+### Author: korn@cumulonimbus.at University of Fribourg 2021
 ################################################################################
 
 
@@ -16,19 +16,14 @@ library("gplots")
 
 
 rm(list = ls())
-
-
-setwd("~/peatland-microbes/")
-
-
-set.seed(128252)
+setwd("~/repos/peatland-microbes/")
 
 
 ################################################################################
 ### Moss data
-moss.pa <- readRDS("rds/SMP_moss40.prok.a.RDS")
-moss.ea <- readRDS("rds/SMP_moss40.euk.a.RDS")
-moss <- readRDS("rds/SMP_moss40.RDS")
+moss.pa <- readRDS("rds/Moss_prok.a.RDS")
+moss.ea <- readRDS("rds/Moss_euk.a.RDS")
+moss <- readRDS("rds/Moss_smp.RDS")
 
 
 ################################################################################
@@ -79,10 +74,11 @@ tax <- c("Euryarchaeota", "Nanoarchaeota", ## Archaea
          "WPS-2", "FCPU426", "Patescibacteria", "MBNT15",
          "Elusimicrobiota", "Spirochaetota", "NB1-j", "Abditibacteriota",
          "RCP2-54", "Latescibacterota", "Sumerlaeota", "Fibrobacterota", "WS4",
-         "Deinococcota",
+         "Deinococcota", "SAR324_clade(Marine_group_B)",
          ### Eukaryotes ###
          ## Amoeba
          "Amoebozoa_ph", "Dictyostelia", "Gracilipodida", "Schizoplasmodiida",
+         "Protosteliida",
          ## SAR:Heterokonta/Stramenopiles
          "Bicosoecida", "Ochrophyta_ph", "Diatomea", "Hyphochytriomycetes",
          "MAST-3", "MAST-12", "Peronosporomycetes",
@@ -111,6 +107,7 @@ summary(tax.otu.m.m$Count)
 
 
 ## Plot
+# ggplot(tax.otu.m.m, aes(x = Phylum, y = Count,
 ggplot(tax.otu.m.m, aes(x = factor(Phylum, level = rev(tax)), y = Count,
                         fill = Site)) +
   geom_bar(stat = "identity") +
@@ -121,7 +118,7 @@ ggplot(tax.otu.m.m, aes(x = factor(Phylum, level = rev(tax)), y = Count,
   theme_bw(base_size = 14) +
   theme(legend.position = "none",
         axis.text.x = element_text(angle = 45, vjust = 1))
-# ggsave("Moss_Phyla.pdf", width = 8.27, height = 11.69)
+ggsave("Moss_Phyla.pdf", width = 8.27, height = 11.69)
 
 
 ### Inspect taxa and frequencies
@@ -170,18 +167,18 @@ otus$Domain <- ordered(otus$Domain, levels = c("Prokaryotes", "Eukaryotes"))
 
 
 ## Alpha-diversity
-ggplot(otus, aes(x = Succession, y = alpha)) +
+ggplot(otus, aes(x = Site, y = alpha)) +
   geom_boxplot(color = "black", size = 0.2, outlier.shape = NA) +
   geom_jitter(aes(fill = Site), height = 0, width = 0.3, size = 2, shape = 21) +
   stat_summary(aes(group = Site), fun = mean,
                colour = "black", geom = "point", fill = "white",
                shape = 21, size = 2.5, show.legend = FALSE) +
-  facet_grid(Domain ~ Site, scales = "free_y") +
+  facet_grid(Domain ~ Site, scales = "free") +
   xlab("") +
   ylab(expression(alpha-diversity)) +
   theme(legend.position = "none", legend.direction = "horizontal",
         axis.text.x = element_blank())
-# ggsave("Moss_Alpha.pdf", width = 11.69, height = 5)
+ggsave("Moss_Alpha.pdf", width = 11.69, height = 5)
 
 
 ## Mean alpha-diversity by site and domain
@@ -217,9 +214,11 @@ TukeyHSD(res.aov)
 ################################################################################
 ### Ordination
 ## Choose pro- or eukaryotes
-moss.log <- moss.ea
-# moss.log <- moss.pa
+moss.log <- moss.pa
+# moss.log <- moss.ea
 
+
+set.seed(128252)
 
 moss.log <- transform_sample_counts(moss.log, function(otu) {log1p(otu)})
 moss.nmds <- ordinate(moss.log, method = "NMDS", distance = "bray", k = 2,
@@ -328,6 +327,7 @@ det[det == ""] <- 0
 det[] <- lapply(det, as.integer)
 det <- log1p(t(det))
 
+set.seed(128252)
 
 det.nmds <- metaMDS(det, distance = "bray", k = 1, trymax = 75,
                     autotransform = FALSE)
@@ -352,16 +352,13 @@ det.nmds.sc$Sector <- substr(rownames(det.nmds.sc), 3, 3)
 mossMeta <- merge(mossMeta, det.nmds.sc, by = c("Site", "Sector"))
 
 
-### Export data
-# write.table(mossMeta, "csv/Mosses_Metadata_unscaled.csv", sep = "\t",
-#             row.names = FALSE)
-
-
 ################################################################################
 ### Microbiomes
 ## Prokaryotes
 moss.prok.mb <- as.data.frame(otu_table(moss.pa))
 moss.prok.mb <- log1p(moss.prok.mb)
+
+set.seed(128252)
 
 
 moss.prok.nmds <- vegan:::metaMDS(moss.prok.mb, distance = "bray",
@@ -384,6 +381,7 @@ mossMeta <- merge(mossMeta, moss.prok.nmds.sc, by = "FullID", all = TRUE)
 moss.euk.mb <- as.data.frame(otu_table(moss.ea))
 moss.euk.mb <- log1p(moss.euk.mb)
 
+set.seed(128252)
 
 moss.euk.nmds <- vegan:::metaMDS(moss.euk.mb, distance = "bray",
                                  trymax = 50, k = 2, autotransform = FALSE)
@@ -404,6 +402,7 @@ mossMeta <- merge(mossMeta, moss.euk.nmds.sc, by = "FullID", all = TRUE)
 moss.mb <- as.data.frame(otu_table(moss))
 moss.mb <- log1p(moss.mb)
 
+set.seed(128252)
 
 moss.nmds <- vegan:::metaMDS(moss.mb, distance = "bray",
                              trymax = 50, k = 2, autotransform = FALSE)
@@ -418,6 +417,11 @@ moss.nmds.sc$FullID <- rownames(moss.nmds.sc)
 
 
 mossMeta <- merge(mossMeta, moss.nmds.sc, by = "FullID", all = TRUE)
+
+
+### Export data
+write.table(mossMeta, "csv/Mosses_Metadata_unscaled.csv", sep = "\t",
+            row.names = FALSE)
 
 
 ################################################################################
