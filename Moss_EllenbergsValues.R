@@ -4,7 +4,7 @@
 ################################################################################
 ### Mosses: Match Ellenberg's indicator values with a species list
 ### Authors: Rachel Korn
-### korn@cumulonimbus.at University of Fribourg 2020
+### korn@cumulonimbus.at University of Fribourg 2021
 ################################################################################
 
 
@@ -18,7 +18,7 @@ theme_set(theme_bw(base_size = 20) +
 rm(list = ls())
 
 
-setwd("~/EVA/EllenbergsValuesAutomaton/")
+setwd("~/repos/EVA/EllenbergsValuesAutomaton/")
 
 
 ################################################################################
@@ -44,7 +44,7 @@ ev[, c(2:8)] <- as.data.frame(apply(ev[, c(2:8)], 2, as.integer))
 
 ################################################################################
 ### Read vegetation list
-setwd("~/peatland-microbes/")
+setwd("~/repos/peatland-microbes/")
 
 
 vascu <- read.table("csv/VascularPlants.csv", sep = "\t", header = TRUE,
@@ -302,7 +302,7 @@ plants.m$EV <- as.factor(plants.m$EV)
 
 ### Plot
 plants.m$Site <- ordered(plants.m$Site,
-                         levels = c("CB", "LE", "LV", "LT", "LM"))
+                         levels = c("LT", "LM", "LV", "LE", "CB"))
 
 
 ## Exclude Continentality and Salt
@@ -319,7 +319,7 @@ ggplot(plants.m, aes(x = Site, y = Value)) +
   scale_y_continuous(breaks = seq(0, 10, 2)) +
   xlab("") +
   ylab("Ellenberg's indicator value")
-# ggsave("Moss_EV.pdf", width = 11.69, height = 5)
+ggsave("Moss_EV.pdf", width = 11.69, height = 5)
 
 
 ### Summarize EV by site
