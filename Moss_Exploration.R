@@ -11,8 +11,10 @@ library("phyloseq")
 library("ggplot2")
 theme_set(theme_bw(base_size = 20) +
             theme(rect = element_rect(fill = "transparent")))
+library("gridExtra")
 library("vegan")
 library("gplots")
+library("reshape2")
 
 
 rm(list = ls())
@@ -24,6 +26,13 @@ setwd("~/repos/peatland-microbes/")
 moss.pa <- readRDS("rds/Moss_prok.a.RDS")
 moss.ea <- readRDS("rds/Moss_euk.a.RDS")
 moss <- readRDS("rds/Moss_smp.RDS")
+
+
+
+sample_data(moss.pa)$Site <- ordered(sample_data(moss.pa)$Site,
+                                     levels = c("LT", "LM", "LV", "LE", "CB"))
+sample_data(moss.ea)$Site <- ordered(sample_data(moss.ea)$Site,
+                                     levels = c("LT", "LM", "LV", "LE", "CB"))
 
 
 ################################################################################
@@ -45,13 +54,13 @@ tax.otu.m[, -c(1:7)] <- log1p(tax.otu.m[, -c(1:7)])
 
 
 tax.otu.m.m <- reshape2::melt(tax.otu.m, id.vars = c("Taxa", "Domain",
-                                                    "Phylum", "Class",
-                                                    "Order", "Family",
-                                                    "Genus"),
-                             variable.name = "FullID", value.name = "Count")
+                                                     "Phylum", "Class",
+                                                     "Order", "Family",
+                                                     "Genus"),
+                              variable.name = "FullID", value.name = "Count")
 tax.otu.m.m$Site <- substr(tax.otu.m.m$FullID, 1, 2)
 tax.otu.m.m$Site <- ordered(tax.otu.m.m$Site,
-                           levels = c("CB", "LE", "LV", "LT", "LM"))
+                            levels = c("LT", "LM", "LV", "LE", "CB"))
 tax.otu.m.m$Domain[tax.otu.m.m$Domain == "Archaea"] <- "A."
 
 
@@ -107,7 +116,6 @@ summary(tax.otu.m.m$Count)
 
 
 ## Plot
-# ggplot(tax.otu.m.m, aes(x = Phylum, y = Count,
 ggplot(tax.otu.m.m, aes(x = factor(Phylum, level = rev(tax)), y = Count,
                         fill = Site)) +
   geom_bar(stat = "identity") +
@@ -171,8 +179,8 @@ ggplot(otus, aes(x = Site, y = alpha)) +
   geom_boxplot(color = "black", size = 0.2, outlier.shape = NA) +
   geom_jitter(aes(fill = Site), height = 0, width = 0.3, size = 2, shape = 21) +
   stat_summary(aes(group = Site), fun = mean,
-               colour = "black", geom = "point", fill = "white",
-               shape = 21, size = 2.5, show.legend = FALSE) +
+               colour = "black", geom = "point", fill = "gray",
+               shape = 8, size = 3.5, show.legend = FALSE) +
   facet_grid(Domain ~ Site, scales = "free") +
   xlab("") +
   ylab(expression(alpha-diversity)) +
@@ -213,20 +221,16 @@ TukeyHSD(res.aov)
 
 ################################################################################
 ### Ordination
-## Choose pro- or eukaryotes
-moss.log <- moss.pa
-# moss.log <- moss.ea
-
-
+## Prokaryotes
 set.seed(128252)
 
-moss.log <- transform_sample_counts(moss.log, function(otu) {log1p(otu)})
-moss.nmds <- ordinate(moss.log, method = "NMDS", distance = "bray", k = 2,
+moss.pa.log <- transform_sample_counts(moss.pa, function(otu) {log1p(otu)})
+moss.nmds <- ordinate(moss.pa.log, method = "NMDS", distance = "bray", k = 2,
                       trymax = 50)
 moss.nmds
 
 
-plot_ordination(moss.log, moss.nmds, shape = "Sector",
+nmds.prok <- plot_ordination(moss.pa.log, moss.nmds, shape = "Sector",
                 color = "Site", title = NULL, label = "FullID") +
   stat_ellipse(aes(group = Site), type = "t", linetype = 2, size = 0.2) +
   geom_point(size = 3) +
@@ -237,8 +241,35 @@ plot_ordination(moss.log, moss.nmds, shape = "Sector",
   ylim(-1, 0.5) +
   xlab("nMDS1") +
   ylab("nMDS2")
-# ggsave("Moss_16S_nMDS.pdf", width = 8.27, height = 8.27)
-# ggsave("Moss_18S_nMDS.pdf", width = 8.27, height = 8.27)
+
+
+## Eukaryotes
+set.seed(128252)
+
+moss.ea.log <- transform_sample_counts(moss.ea, function(otu) {log1p(otu)})
+moss.nmds <- ordinate(moss.ea.log, method = "NMDS", distance = "bray", k = 2,
+                      trymax = 50)
+moss.nmds
+
+
+nmds.euk <- plot_ordination(moss.ea.log, moss.nmds, shape = "Sector",
+                             color = "Site", title = NULL, label = "FullID") +
+  stat_ellipse(aes(group = Site), type = "t", linetype = 2, size = 0.2) +
+  geom_point(size = 3) +
+  coord_fixed(ratio = 1) +
+  theme(legend.position = "top", legend.direction = "horizontal",
+        legend.box = "vertical", legend.margin = margin()) +
+  xlim(-1, 0.9) +
+  ylim(-1, 0.5) +
+  xlab("nMDS1") +
+  ylab("")
+
+
+## Arrange plots side by side and export
+nmds.both <- arrangeGrob(nmds.prok, nmds.euk, nrow = 1)
+
+
+ggsave("Moss_nMDS.pdf", nmds.both, width = 11.69, height = 8.27)
 
 
 ################################################################################
@@ -371,7 +402,6 @@ stressplot(moss.prok.nmds)
 moss.prok.nmds.sc <- as.data.frame(scores(moss.prok.nmds)[, 1])
 names(moss.prok.nmds.sc) <- "mb.moss.prok"
 moss.prok.nmds.sc$FullID <- rownames(moss.prok.nmds.sc)
-# sample_data(moss.pa)$mb.moss.prok <- moss.prok.nmds.sc$mb.moss.prok
 
 
 mossMeta <- merge(mossMeta, moss.prok.nmds.sc, by = "FullID", all = TRUE)
@@ -454,9 +484,10 @@ corPalette <- colorRampPalette(c("#D55E00", "white",  "#56B4E9"))(n = 19)
 ## Sort covariance data.frame
 covs <- data.frame(cov(mossMeta[, c(10, 16:17, 19:21, 23:26)],
                        use = "complete"))
-# covs <- covs[c("Altitude", "Light", "Temperature", "Humidity", "Soil.reaction",
-#                "Nitrogen", "Canopy.cover", "Moss_g", "Distance1D")]
-# covs <- covs[colnames(covs), ]
+covs <- covs[c("Altitude", "Light", "Temperature", "Humidity", "Soil.reaction",
+               "Nitrogen", "CanopyCover", "Moss_g", "Distance",
+               "MossComposition")]
+covs <- covs[colnames(covs), ]
 
 
 pdf("Moss_Metadata_Covariance.pdf", height = 8.27, width = 8.27)
@@ -469,22 +500,22 @@ dev.off()
 
 
 ################################################################################
-theme_set(theme_bw(base_size = 14) +
+theme_set(theme_bw(base_size = 9) +
             theme(rect = element_rect(fill = "transparent")))
 
 
 ## Alpha-diversity vs environmental variables
 mossMeta <- read.table("csv/Mosses_Metadata_unscaled.csv", sep = "\t",
                        header = TRUE)
-names(mossMeta)
-
+mossMeta$Site <- ordered(mossMeta$Site,
+                         levels = c("LT", "LM", "LV", "LE", "CB"))
 
 # names(otus)
 # names(mossMeta)
 mossMeta <- merge(mossMeta, otus[, c(1:3)])
 names(mossMeta)
 
-mossMeta.s <- mossMeta[, c(2, 10, 16:17, 19:21, 23:28)]
+mossMeta.s <- mossMeta[, c(2, 10, 16:17, 19:21, 23:31)]
 names(mossMeta.s)
 
 
@@ -499,12 +530,11 @@ ggplot(mossMeta.s.m, aes(x = Value, y = alpha, color = Site)) +
   geom_point(pch = 21) +
   facet_grid(Domain ~ Variable, scales = "free", space = "free_y") +
   ylab(expression(alpha-diversity)) +
-  xlab("add units") +
+  xlab("m | - | - | - | - | - | % | g | m | - | - | - | -") +
   scale_color_viridis_d() +
   theme(legend.position = "top",
         axis.text.x = element_text(angle = 45, hjust = 1))
 ggsave("Moss_AlphaVsEnvironment.pdf", height = 6, width = 11.69)
-
 
 
 ################################################################################
