@@ -105,8 +105,13 @@ merge.mosses = c(TRUE, FALSE)) {
   ## Merge ps object with metadata
   mossMeta <- sample_data(mossMeta)
   moss.g <- merge_phyloseq(moss.g, mossMeta)
-  head(sample_data(moss.g))
+
   # sample_names(moss.g) == mossMeta$FullID
+
+  sample_data(moss.g)$FullID <- rownames(sample_data(moss.g))
+  sample_data(moss.g)$Sector <- substr(sample_data(moss.g)$FullID, 3, 3)
+  sample_data(moss.g)$Succession <- NULL
+  head(sample_data(moss.g))
 
 
   ##############################################################################
