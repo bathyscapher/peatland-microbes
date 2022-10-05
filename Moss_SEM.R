@@ -3,13 +3,13 @@
 ################################################################################
 ################################################################################
 ### Mosses SEM
-### Author: korn@cumulonimbus.at University of Fribourg 2020
+### Author: korn@cumulonimbus.at University of Fribourg 2021
 ################################################################################
 
 
-# library("lavaan")
+library("lavaan")
 library("semPlot")
-library("blavaan")
+# library("blavaan")
 library("gplots")
 library("GGally")
 
@@ -20,11 +20,10 @@ library("GGally")
 rm(list = ls())
 
 
-setwd("~/Documents/Seafile/_FNS_2016-NicheDynamCoexist/SarraceniaMicrobiomeProject/Mosses/")
-setwd("~/Seafile/_FNS_2016-NicheDynamCoexist/SarraceniaMicrobiomeProject/Mosses")
+setwd("~/repos/peatland-microbes/csv/")
 
 
-mossMeta <- read.table("Mosses_Metadata.csv", sep = "\t", header = TRUE)
+mossMeta <- read.table("Mosses_Metadata_scaled.csv", sep = "\t", header = TRUE)
 
 
 dim(mossMeta)
@@ -36,9 +35,7 @@ colnames(mossMeta)
 ### Testing 123
 check1.vars <- c("Site", "Altitude", "Light", "Temperature", "Humidity",
                  "Soil.reaction", "Nitrogen", "CanopyCover", "Moss_g",
-                 "Distance", "MossHabitat"#,
-                 # "mb.moss.prok", "mb.moss.euk", "mb.moss"
-                 )
+                 "Distance", "MossComposition")
 newdata2 <- mossMeta[check1.vars]
 print(round(cor(newdata2[, -1], use = "complete"), digits = 1))
 
@@ -82,7 +79,8 @@ my_palette <- colorRampPalette(c("red", "white",  "blue"))(n = 19)
 ## EV composite
 ev <-
 'mb.moss.prok ~ Light + Temperature + Humidity + Soil.reaction
-mb.moss.euk ~ Light + Temperature + Humidity + Soil.reaction'
+mb.moss.euk ~ Light + Temperature + Humidity + Soil.reaction
+mb.moss ~ Light + Temperature + Humidity + Soil.reaction'
 
 
 fit.ev <- sem(ev, data = mossMeta)
@@ -108,6 +106,15 @@ Soil.reaction.e <- coef(fit.ev)[[8]]
 coef(fit.ev)[5:8]; Light.e; Temperature.e; Humidity.e; Soil.reaction.e
 
 
+Light.m <- coef(fit.ev)[[9]]
+Temperature.m <- coef(fit.ev)[[10]]
+Humidity.m <- coef(fit.ev)[[11]]
+Soil.reaction.m <- coef(fit.ev)[[12]]
+
+
+coef(fit.ev)[9:12]; Light.m; Temperature.m; Humidity.m; Soil.reaction.m
+
+
 ## Compute composite "ev"
 mossMeta$ev.p <- Light.p * mossMeta$Light +
   Temperature.p * mossMeta$Temperature +
@@ -119,12 +126,17 @@ mossMeta$ev.e <- Light.e * mossMeta$Light +
   Humidity.e  * mossMeta$Humidity +
   Soil.reaction.e * mossMeta$Soil.reaction
 
+mossMeta$ev.m <- Light.m * mossMeta$Light +
+  Temperature.m * mossMeta$Temperature +
+  Humidity.m * mossMeta$Humidity +
+  Soil.reaction.m * mossMeta$Soil.reaction
+
 
 ### Run SEM with the manually computed composite
 ev.comp <-
 'mb.moss.prok ~ ev.p
 mb.moss.euk ~ ev.e
-'
+mb.moss ~ ev.m'
 
 fit.ev.comp <- sem(ev.comp, data = mossMeta)
 
@@ -136,63 +148,9 @@ summary(fit.ev.comp, rsq = TRUE, standardized = TRUE)
 
 
 rm(fit.ev.comp, ev, ev.comp, Light.p, Temperature.p, Humidity.p,
-   Soil.reaction.p, Light.e, Temperature.e, Humidity.e, Soil.reaction.e)
-
-
-# ##### Without Light
-# ev2 <-
-#   'mb.moss.prok ~ Temperature + Humidity + Soil.reaction
-# mb.moss.euk ~ Temperature + Humidity + Soil.reaction'
-#
-#
-# fit.ev2 <- sem(ev2, data = mossMeta)
-# summary(fit.ev2, rsq = TRUE)
-#
-#
-# ## Extract coefficients
-# Temperature.p <- coef(fit.ev2)[[1]]
-# Humidity.p <- coef(fit.ev2)[[2]]
-# Soil.reaction.p <- coef(fit.ev2)[[3]]
-#
-#
-# coef(fit.ev2)[1:3]; Temperature.p; Humidity.p; Soil.reaction.p
-#
-#
-# Temperature.e <- coef(fit.ev2)[[4]]
-# Humidity.e <- coef(fit.ev2)[[5]]
-# Soil.reaction.e <- coef(fit.ev2)[[6]]
-#
-#
-# coef(fit.ev2)[4:6]; Temperature.e; Humidity.e; Soil.reaction.e
-#
-#
-# ## Compute composite "ev2"
-# mossMeta$ev2.p <- Temperature.p * mossMeta$Temperature +
-#   Humidity.p * mossMeta$Humidity +
-#   Soil.reaction.p * mossMeta$Soil.reaction
-#
-# mossMeta$ev2.e <- Temperature.e * mossMeta$Temperature +
-#   Humidity.e  * mossMeta$Humidity +
-#   Soil.reaction.e * mossMeta$Soil.reaction
-#
-#
-# ### Run SEM with the manually computed composite
-# ev2.comp <-
-#   'mb.moss.prok ~ ev2.p
-# mb.moss.euk ~ ev2.e
-# '
-#
-# fit.ev2.comp <- sem(ev2.comp, data = mossMeta)
-#
-#
-# ## Control if the standard coefficient and z-value (standardised coefficient)
-# ## are similar
-# summary(fit.ev2, rsq = TRUE, standardized = TRUE)
-# summary(fit.ev2.comp, rsq = TRUE, standardized = TRUE)
-#
-#
-# rm(fit.ev2.comp, ev2, ev2.comp, Temperature.p, Humidity.p,
-#    Soil.reaction.p, Temperature.e, Humidity.e, Soil.reaction.e)
+   Soil.reaction.p, Light.e, Temperature.e, Humidity.e, Soil.reaction.e,
+   Light.m, Temperature.m, Humidity.m, Soil.reaction.m, moss,
+   newdata2, check1.vars)
 
 
 ################################################################################
@@ -201,23 +159,25 @@ set.seed(12614)
 
 
 moss <-
+'MossComposition ~ Altitude + CanopyCover + Distance
+# ev.p ~ Altitude + CanopyCover + Distance
+# ev.e ~ Altitude + CanopyCover + Distance
+ev.m ~ Altitude + CanopyCover + Distance
+
+mb.moss ~ Distance + Altitude + CanopyCover + ev.m + MossComposition + Moss_g
+# mb.moss.prok ~ Distance + Altitude + CanopyCover + ev.p + MossComposition + Moss_g + mb.moss.euk
+# mb.moss.euk  ~ Distance + Altitude + CanopyCover + ev.e + MossComposition + Moss_g + mb.moss.prok
+
+ev.m ~~ MossComposition
+
+# ev.p ~~ MossComposition
+# ev.e ~~ MossComposition
+# ev.e ~~ ev.p
+# mb.moss.prok ~~ mb.moss.euk
 '
-MossHabitat ~ Altitude + CanopyCover + Distance
-ev.p ~ Altitude + CanopyCover + Distance
-ev.e ~ Altitude + CanopyCover + Distance
-
-mb.moss.prok ~ Distance + Altitude + CanopyCover + ev.p + MossHabitat + Moss_g
-mb.moss.euk ~  Distance + Altitude + CanopyCover + ev.e + MossHabitat + Moss_g
 
 
-ev.p ~~ MossHabitat
-ev.e ~~ MossHabitat
-ev.e ~~ ev.p
-mb.moss.prok ~~ mb.moss.euk
-'
-
-
-fit.moss <- sem(moss, data = mossMeta)
+fit.moss <- sem(moss, data = mossMeta, estimator = "MLM")
 summary(fit.moss, rsq = TRUE, fit.measures = TRUE)
 
 

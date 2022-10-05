@@ -224,8 +224,10 @@ TukeyHSD(res.aov)
 ## Prokaryotes
 set.seed(128252)
 
-moss.pa.log <- transform_sample_counts(moss.pa, function(otu) {log1p(otu)})
-moss.nmds <- ordinate(moss.pa.log, method = "NMDS", distance = "bray", k = 2,
+moss.pa.log <- transform_sample_counts(moss.pa,
+                                       function(otu) {log1p(otu)})
+moss.nmds <- ordinate(moss.pa.log,
+                      method = "NMDS", distance = "bray", k = 2,
                       trymax = 50)
 moss.nmds
 

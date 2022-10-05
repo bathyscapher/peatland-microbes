@@ -2,23 +2,20 @@
 ################################################################################
 ################################################################################
 ################################################################################
-### SMP Read taxa (OTU or ASV), add metadata and much more
+### Peatland microbes network analysis
 ### Authors: Rachel Korn
-### korn@cumulonimbus.at University of Fribourg 2019/2020
+### korn@cumulonimbus.at University of Fribourg 2021
 ################################################################################
 
 
 library("phyloseq")
 library("reshape2")
 library("igraph")
-# library("vegan")
 library("Hmisc")
 library("indicspecies")
 
 
-setwd("~/Seafile/_FNS_2016-NicheDynamCoexist/SarraceniaMicrobiomeProject/Mosses")
-
-
+setwd("~/repos/peatland-microbes")
 rm(list = ls())
 
 
@@ -26,20 +23,18 @@ set.seed(7113)
 
 
 ################################################################################
-### Pitcher data
-# prok.a <- readRDS("SMP_prok.a.RDS")
-# euk.a <- readRDS("SMP_euk.a.RDS")
-moss <- readRDS("SMP_moss40.RDS")
+### ASV data
+moss <- readRDS("rds/Moss_moss.RDS")
+moss
 
 
-################################################################################
+## Extract ASVs, taxonomy and merge
 otus <- data.frame(t(otu_table(moss)))
-
-
-## Extract taxonomy and merge
 tax <- data.frame(tax_table(moss))
+
 otus.tax <- merge(tax, otus, by = 0)
 names(otus.tax)[1] <- "ASV"
+head(otus.tax)
 
 
 ## Fill unannotated genera with higher-level taxa
@@ -81,7 +76,7 @@ rownames(otus.tax) <- otus.tax$Genus
 otus.tax.is <- otus.tax
 
 
-## Only taxa that occur at least in 8 samples (= at least 20 %) and then, subset
+## Subset to taxa occuring in at least 8 samples (= at least 20 %)
 otus.pa <- otus
 otus.pa[otus.pa > 0] <- 1
 otus.pa <- otus.pa[rowSums(otus.pa) > 7, ]
@@ -98,7 +93,7 @@ otus.tax.is <- data.frame(t(otus.tax.is))
 
 
 ## Metadata
-mossMeta <- read.table("Mosses_Metadata_unscaled.csv", sep = "\t",
+mossMeta <- read.table("csv/Mosses_Metadata_unscaled.csv", sep = "\t",
                        header = TRUE)
 rownames(otus.tax.is) == mossMeta$FullID
 
@@ -210,8 +205,8 @@ cc$Genus <- rownames(cc)
 
 
 ## Merge them
-indic <- cbind(sr, cc, alt)
-indic <- indic[, -c(2, 4)]
+# indic <- cbind(sr, cc, alt)
+# indic <- indic[, -c(2, 4)]
 
 
 ################################################################################
@@ -220,20 +215,31 @@ indic <- indic[, -c(2, 4)]
 ## occurr within a site) samples and then, subset
 otus <- data.frame(t(otu_table(moss)))
 
-otus.pa <- data.frame(t(otu_table(moss)))
-otus.pa[otus.pa > 0] <- 1
-otus.pa <- otus.pa[rowSums(otus.pa) > 7, ]
-summary(rowSums(otus.pa))
-subset.inc <- rownames(otus.pa)
+# otus.pa <- data.frame(t(otu_table(moss)))
+# otus.pa[otus.pa > 0] <- 1
+# otus.pa <- otus.pa[rowSums(otus.pa) > 7, ]
+# summary(rowSums(otus.pa))
+# subset.inc <- rownames(otus.pa)
+#
+# otus <- otus[rownames(otus) %in% subset.inc, ]
+# dim(otus)
 
-otus <- otus[rownames(otus) %in% subset.inc, ]
+
+## Subset to site
+otus <- otus[, 1:8] # CB
+# ...
+head(otus)
+
+
+## Remove empty taxa
+otus <- otus[rowSums(otus) > 0, ]
 
 
 ## Total abundance
 otus.tax$Abundance <- rowSums(otus.tax[, 8:47])
 
 
-## Correlation analysis based on spearman's co-efficient
+## Correlation analysis based on Spearman's coefficient
 otus.dist <- rcorr(t(otus), type = "spearman")
 otus.cor <- otus.dist$r
 otus.cor.p <- otus.dist$P
@@ -244,8 +250,8 @@ otus.cor.p <- p.adjust(otus.cor.p, method = "BH")
 
 
 ## Positive and netagive cooccurence at given coefficient and p-value cutoff
-cor.cutoff <- 0.4
-p.cutoff <- 0.001
+cor.cutoff <- 0.7
+p.cutoff <- 0.005
 
 
 otus.cor[which(otus.cor >= (- cor.cutoff) & otus.cor <= cor.cutoff)] <- 0
@@ -253,7 +259,7 @@ otus.cor[which(otus.cor.p > p.cutoff)] <- 0
 
 
 ## Delete rows and columns with sum = 0
-otus.cor <- otus.cor[which(rowSums(otus.cor) != 1), ]
+otus.cor <- otus.cor[which(rowSums(otus.cor) != 0), ]
 otus.cor <- otus.cor[, which(colSums(otus.cor) != 0)]
 
 
@@ -277,11 +283,6 @@ otu.target <- merge(otu.target, sr, by = "Genus", all.x = TRUE)
 otu.target <- otu.target[order(otu.target$to_sort), ]
 
 
-##
-# otu.target$DomainInt <- as.numeric(factor(otu.target$Domain))
-# otu.target[, c(3, 50)]
-
-
 E(g3)
 V(g3)
 V(g3)$name
@@ -299,7 +300,6 @@ otus.cor.m <- otus.cor.m[complete.cases(otus.cor.m), ]
 E(g3)$width <- otus.cor.m$rho
 
 
-# E(g3)$color <- ifelse(E(g3)$width > 0, '#009E73', '#D55E00')
 E(g3)$scale <- ifelse(E(g3)$width < 0, E(g3)$width * -1, E(g3)$width)
 E(g3)$sign <- ifelse(E(g3)$width < 0, "Negative", "Positive")
 
@@ -346,10 +346,11 @@ V(g3)$SoilReaction <- otu.target$SoilReaction
 
 
 ## Export graph
-# write_graph(g3, "~/Documents/Seafile/_FNS_2016-NicheDynamCoexist/SarraceniaMicrobiomeProject/Mosses/Cytoscape/Moss_Co-occurrence_8.graphml",
-            # format = "graphml")
-write_graph(g3, "~/Documents/Seafile/_FNS_2016-NicheDynamCoexist/SarraceniaMicrobiomeProject/Mosses/Cytoscape/Moss_Co-occurrence_8_pub.graphml",
+# write_graph(g3, "~/repos/peatland-microbes/graphml/Co-occurrence_CB.graphml",
+#             format = "graphml")
+write_graph(g3, "~/repos/peatland-microbes/graphml/Co-occurrence_LE.graphml",
             format = "graphml")
+
 
 
 ## Network statistics
