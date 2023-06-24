@@ -13,38 +13,28 @@
 ## * moss.a = abundance filtered
 
 
-# rm(list = ls())
-#
-#
-# asvDir <- "/home/r/Seafile/SMP_results"
-# primer <- "18S"
-# setwd(asvDir)
-
-
 ################################################################################
 readTaxa <- function (primer = c("16S", "18S"),
-merge.mosses = c(TRUE, FALSE)) {
+                      merge.mosses = c(TRUE, FALSE)) {
 
 
   ##############################################################################
   ### Read taxa (ASV)
-  if (primer == "16S")
-    {
+  if (primer == "16S") {
     seqtab.nochim <- readRDS(paste(asvDir,
                                    "SMP_16S_reseq/seqtab.nochim_SMP16S.rds",
                                    sep = "/"))
 
     taxa <- readRDS(paste(asvDir, "SMP_16S_reseq/taxa_SMP16S.rds", sep = "/"))
-    }
+  }
 
 
-  if (primer == "18S")
-    {
+  if (primer == "18S") {
     seqtab.nochim <- readRDS(paste(asvDir,
                                    "SMP_18S_reseq/seqtab.nochim_SMP18S.rds",
                                    sep = "/"))
     taxa <- readRDS(paste(asvDir, "SMP_18S_reseq/taxa_SMP18S.rds", sep = "/"))
-    }
+  }
 
 
   moss <- phyloseq(otu_table(seqtab.nochim, taxa_are_rows = FALSE),
@@ -64,8 +54,8 @@ merge.mosses = c(TRUE, FALSE)) {
 
   ##############################################################################
   ### Remove non-moss samples
-  smpMeta <- read.table("~/repos/peatland-microbes/csv/smpMeta.csv",
-                         sep = "\t", header = TRUE, row.names = 1)
+  smpMeta <- read.table("csv/smpMeta.csv",
+                        sep = "\t", header = TRUE, row.names = 1)
   smpMeta$FullID <- rownames(smpMeta)
 
 
@@ -88,7 +78,7 @@ merge.mosses = c(TRUE, FALSE)) {
   moss <- merge_samples(moss, "FullID")
 
 
-  ############################################################################
+  ##############################################################################
   ### Aggregate taxa by genus
   moss.g  <- tax_glom(moss, taxrank = rank_names(moss)[6],
                       NArm = FALSE, bad_empty = c("", " ", "\t"))
@@ -96,7 +86,7 @@ merge.mosses = c(TRUE, FALSE)) {
 
   ##############################################################################
   ### Read metadata
-  mossMeta <- read.table("~/repos/peatland-microbes/csv/MossesMetadata.csv",
+  mossMeta <- read.table("csv/MossesMetadata.csv",
                          sep = "\t", header = TRUE)
   mossMeta$FullID <- gsub("_", "", mossMeta$FullID)
   rownames(mossMeta) <- mossMeta$FullID
@@ -116,18 +106,16 @@ merge.mosses = c(TRUE, FALSE)) {
 
   ##############################################################################
   ### Remove spurious taxa
-  if(primer == "16S")
-    {
+  if(primer == "16S") {
     moss.s <- subset_taxa(moss.g, !(Domain %in% c("unknown", "Eukaryota", NA) |
                                       Phylum %in% c("Eukaryota_unclassified",
                                                     NA) |
                                       Order %in% c("Chloroplast") |
                                       Family %in% c("Mitochondria")))
-    }
+  }
 
 
-  if(primer == "18S")
-    {
+  if(primer == "18S") {
     moss.s <- subset_taxa(moss.g, !(Domain %in% c("Bacteria", "unknown") |
                                       Phylum %in% c("Eukaryota_unclassified",
                                                     "Myxogastria",
@@ -191,7 +179,7 @@ merge.mosses = c(TRUE, FALSE)) {
                                       Phylum == "Ascomycota" & Class %in% NA |
                                       Phylum == "Basidiomycota" &
                                       Class %in% NA))
-    }
+  }
 
 
   ## Remove empty taxa
@@ -219,7 +207,7 @@ merge.mosses = c(TRUE, FALSE)) {
                  moss.a = moss.a)
 
   return(moss.l)
-  }
+}
 
 
 ################################################################################

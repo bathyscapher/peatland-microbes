@@ -12,19 +12,18 @@ library("phyloseq")
 
 
 rm(list = ls())
-setwd("~/repos/peatland-microbes/")
 
 
 ################################################################################
 ### Arguments
 
-source("~/repos/peatland-microbes/Moss_readMetadataAndASV.R")
+source("Moss_readMetadataAndASV.R")
 
 
 ################################################################################
 ### Read pitcher taxa
 
-asvDir <- "/home/r/Seafile/SMP_results"
+asvDir <- "../smp_results"
 
 
 ### Prokaryotes

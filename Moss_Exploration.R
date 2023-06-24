@@ -18,7 +18,6 @@ library("reshape2")
 
 
 rm(list = ls())
-setwd("~/repos/peatland-microbes/")
 
 
 ################################################################################
@@ -126,7 +125,7 @@ ggplot(tax.otu.m.m, aes(x = factor(Phylum, level = rev(tax)), y = Count,
   theme_bw(base_size = 14) +
   theme(legend.position = "none",
         axis.text.x = element_text(angle = 45, vjust = 1))
-ggsave("Moss_Phyla.pdf", width = 8.27, height = 11.69)
+# ggsave("Moss_Phyla.pdf", width = 8.27, height = 11.69)
 
 
 ### Inspect taxa and frequencies
@@ -139,10 +138,10 @@ unique(df$Genus)
 ################################################################################
 ### Alpha-diversity
 ## Prokaryotes
-otu.p <- data.frame(otu_table(transform_sample_counts(moss.pa,
-                                                      function(abund) {
-                                                        1 * (abund > 0)
-                                                      })))
+otu.p <- data.frame(
+  otu_table(transform_sample_counts(
+    moss.pa, function(abund) {1 * (abund > 0)})
+  ))
 otu.p$alpha <- rowSums(otu.p)
 otu.p <- otu.p[c("alpha")]
 otu.p$FullID <- rownames(otu.p)
@@ -150,10 +149,10 @@ otu.p$Domain <- "Prokaryotes"
 
 
 ## Eukaryotes
-otu.e <- data.frame(otu_table(transform_sample_counts(moss.ea,
-                                                      function(abund) {
-                                                        1 * (abund > 0)
-                                                      })))
+otu.e <- data.frame(otu_table(
+  transform_sample_counts(moss.ea,
+                          function(abund) {1 * (abund > 0)})
+))
 otu.e$alpha <- rowSums(otu.e)
 otu.e <- otu.e[c("alpha")]
 otu.e$FullID <- rownames(otu.e)
@@ -186,7 +185,7 @@ ggplot(otus, aes(x = Site, y = alpha)) +
   ylab(expression(alpha-diversity)) +
   theme(legend.position = "none", legend.direction = "horizontal",
         axis.text.x = element_blank())
-ggsave("Moss_Alpha.pdf", width = 11.69, height = 5)
+# ggsave("Moss_Alpha.pdf", width = 11.69, height = 5)
 
 
 ## Mean alpha-diversity by site and domain
@@ -271,7 +270,7 @@ nmds.euk <- plot_ordination(moss.ea.log, moss.nmds, shape = "Sector",
 nmds.both <- arrangeGrob(nmds.prok, nmds.euk, nrow = 1)
 
 
-ggsave("Moss_nMDS.pdf", nmds.both, width = 11.69, height = 8.27)
+ # ggsave("Moss_nMDS.pdf", nmds.both, width = 11.69, height = 8.27)
 
 
 ################################################################################
@@ -452,8 +451,8 @@ mossMeta <- merge(mossMeta, moss.nmds.sc, by = "FullID", all = TRUE)
 
 
 ### Export data
-write.table(mossMeta, "csv/Mosses_Metadata_unscaled.csv", sep = "\t",
-            row.names = FALSE)
+# write.table(mossMeta, "csv/Mosses_Metadata_unscaled.csv", sep = "\t",
+#             row.names = FALSE)
 
 
 ################################################################################
@@ -536,7 +535,7 @@ ggplot(mossMeta.s.m, aes(x = Value, y = alpha, color = Site)) +
   scale_color_viridis_d() +
   theme(legend.position = "top",
         axis.text.x = element_text(angle = 45, hjust = 1))
-ggsave("Moss_AlphaVsEnvironment.pdf", height = 6, width = 11.69)
+# ggsave("Moss_AlphaVsEnvironment.pdf", height = 6, width = 11.69)
 
 
 ################################################################################
