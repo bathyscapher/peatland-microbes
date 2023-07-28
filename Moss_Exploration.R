@@ -21,7 +21,7 @@ rm(list = ls())
 
 
 ################################################################################
-### Moss data
+## Moss data  #################################################################
 moss.pa <- readRDS("rds/Moss_prok.a.RDS")
 moss.ea <- readRDS("rds/Moss_euk.a.RDS")
 moss <- readRDS("rds/Moss_smp.RDS")
@@ -35,7 +35,7 @@ sample_data(moss.ea)$Site <- ordered(sample_data(moss.ea)$Site,
 
 
 ################################################################################
-### Convert ps to df
+## Convert ps to df ###########################################################
 tax.m <- as.data.frame(moss@tax_table@.Data)
 otu.m <- as.data.frame(t(otu_table(moss)))
 
@@ -48,7 +48,7 @@ rm(tax.m, otu.m)
 
 
 ################################################################################
-### Plot taxa
+## Plot taxa ##################################################################
 tax.otu.m[, -c(1:7)] <- log1p(tax.otu.m[, -c(1:7)])
 
 
@@ -136,7 +136,7 @@ unique(df$Genus)
 
 
 ################################################################################
-### Alpha-diversity
+### Alpha-diversity  ###########################################################
 ## Prokaryotes
 otu.p <- data.frame(
   otu_table(transform_sample_counts(
@@ -219,7 +219,7 @@ TukeyHSD(res.aov)
 
 
 ################################################################################
-### Ordination
+### Ordination  ################################################################
 ## Prokaryotes
 set.seed(128252)
 
@@ -275,7 +275,7 @@ nmds.both <- arrangeGrob(nmds.prok, nmds.euk, nrow = 1)
 
 ################################################################################
 ################################################################################
-### Prepare metadata for SEM
+### Prepare metadata for SEM  ##################################################
 ## Read metadata
 mossMeta <- read.table("csv/MossesMetadata.csv", sep = "\t", header = TRUE)
 
@@ -300,12 +300,15 @@ leaves <- read.table("csv/LeafSamples.csv",
 
 
 cover <- merge(leaves, cover[, c(1:2, 8)],
-               by.x = c("Site", 'PlantOld'), by.y = c("Site", 'PlantOld'))
+               by.x = c("Site", 'PlantOld'),
+               by.y = c("Site", 'PlantOld'))
 cover$Sector <- substr(cover$FullID, 4, 4)
 
 
 ## Calculate mean canopy cover sector-wise
-cover.mean <- aggregate(cover$CanopyCover, list(cover$Site, cover$Sector), mean,
+cover.mean <- aggregate(cover$CanopyCover,
+                        list(cover$Site, cover$Sector),
+                        mean,
                         na.rm = TRUE)
 names(cover.mean) <- c("Site", "Sector", "CanopyCover")
 
@@ -314,7 +317,8 @@ mossMeta <- merge(mossMeta, cover.mean, by = c("Site", "Sector"))
 
 
 ## Dry weight of sampled mosses as proxy of habitat size and sampling intensity
-weight <- read.table("csv/MossSamples.csv", header = TRUE, sep = ",",
+weight <- read.table("csv/MossSamples.csv",
+                     header = TRUE, sep = ",",
                      fill = FALSE, check.names = TRUE)
 weight$FullID <- gsub("_", "", weight$FullID)
 
@@ -357,7 +361,8 @@ det <- read.table("csv/MossComposition.csv", sep = "\t", header = TRUE,
 det[det == "x"] <- 1
 det[det == ""] <- 0
 det[] <- lapply(det, as.integer)
-det <- log1p(t(det))
+# det <- log1p(t(det))
+det <- t(det)
 
 set.seed(128252)
 
@@ -375,13 +380,15 @@ plot(det.nmds)
 # dev.off()
 
 
-det.nmds.sc <- data.frame(scores(det.nmds))
+det.nmds.sc <- data.frame(scores(det.nmds,
+                                 display = "site"))
 names(det.nmds.sc) <- "MossComposition"
 det.nmds.sc$Site <- substr(rownames(det.nmds.sc), 1, 2)
 det.nmds.sc$Sector <- substr(rownames(det.nmds.sc), 3, 3)
 
 
-mossMeta <- merge(mossMeta, det.nmds.sc, by = c("Site", "Sector"))
+mossMeta <- merge(mossMeta, det.nmds.sc,
+                  by = c("Site", "Sector"))
 
 
 ################################################################################
@@ -400,12 +407,15 @@ moss.prok.nmds
 stressplot(moss.prok.nmds)
 
 
-moss.prok.nmds.sc <- as.data.frame(scores(moss.prok.nmds)[, 1])
-names(moss.prok.nmds.sc) <- "mb.moss.prok"
+moss.prok.nmds.sc <- as.data.frame(scores(moss.prok.nmds,
+                                          display = "site"))
+names(moss.prok.nmds.sc)[1] <- "mb.moss.prok"
 moss.prok.nmds.sc$FullID <- rownames(moss.prok.nmds.sc)
 
 
-mossMeta <- merge(mossMeta, moss.prok.nmds.sc, by = "FullID", all = TRUE)
+mossMeta <- merge(mossMeta,
+                  moss.prok.nmds.sc[, colnames(moss.prok.nmds.sc) %in% c("mb.moss.prok", "FullID")],
+                  by = "FullID", all = TRUE)
 
 
 ## Eukaryotes
@@ -421,12 +431,15 @@ moss.euk.nmds
 stressplot(moss.euk.nmds)
 
 
-moss.euk.nmds.sc <- as.data.frame(scores(moss.euk.nmds)[, 1])
-names(moss.euk.nmds.sc) <- "mb.moss.euk"
+moss.euk.nmds.sc <- as.data.frame(scores(moss.euk.nmds,
+                                         display = "site"))
+names(moss.euk.nmds.sc)[1] <- "mb.moss.euk"
 moss.euk.nmds.sc$FullID <- rownames(moss.euk.nmds.sc)
 
 
-mossMeta <- merge(mossMeta, moss.euk.nmds.sc, by = "FullID", all = TRUE)
+mossMeta <- merge(mossMeta,
+                  moss.euk.nmds.sc[, colnames(moss.euk.nmds.sc) %in% c("mb.moss.euk", "FullID")],
+                  by = "FullID", all = TRUE)
 
 
 ## Both
@@ -442,12 +455,14 @@ moss.nmds
 stressplot(moss.nmds)
 
 
-moss.nmds.sc <- as.data.frame(scores(moss.nmds)[, 1])
-names(moss.nmds.sc) <- "mb.moss"
+moss.nmds.sc <- as.data.frame(scores(moss.nmds, display = "sites"))
+names(moss.nmds.sc)[1] <- "mb.moss"
 moss.nmds.sc$FullID <- rownames(moss.nmds.sc)
 
 
-mossMeta <- merge(mossMeta, moss.nmds.sc, by = "FullID", all = TRUE)
+mossMeta <- merge(mossMeta,
+                  moss.nmds.sc[, colnames(moss.nmds.sc) %in% c("mb.moss", "FullID")],
+                  by = "FullID", all = TRUE)
 
 
 ### Export data
@@ -458,6 +473,8 @@ mossMeta <- merge(mossMeta, moss.nmds.sc, by = "FullID", all = TRUE)
 ################################################################################
 ### Scale numeric variables that will be used in the SEM
 str(mossMeta[, -c(1:9, 11:15)])
+# str(mossMeta[, c(1:9, 11:15)])
+
 
 par(mfrow = c(2, 1))
 boxplot(mossMeta[, -c(1:9, 11:15)])
@@ -492,11 +509,22 @@ covs <- covs[colnames(covs), ]
 
 
 pdf("Moss_Metadata_Covariance.pdf", height = 8.27, width = 8.27)
-heatmap.2(as.matrix(covs), dendrogram = "none", key = TRUE, key.title = "",
-          cellnote = round(covs, digits = 2), notecol = "black", notecex = 0.6,
-          trace = "none", distfun = function(x) {x}, cexCol = 1.5, cexRow = 1.5,
-          symm = TRUE, margins = c(16, 16), col = corPalette,
-          tracecol = "black", Rowv = FALSE, Colv = FALSE)
+heatmap.2(as.matrix(covs),
+          dendrogram = "none",
+          key = TRUE, key.title = "",
+          cellnote = round(covs, digits = 2),
+          notecol = "black",
+          tracecol = "black",
+          notecex = 0.6,
+          trace = "none",
+          distfun = function(x) {x},
+          cexCol = 1.5,
+          cexRow = 1.5,
+          symm = TRUE,
+          margins = c(16, 16),
+          col = corPalette,
+          Rowv = FALSE,
+          Colv = FALSE)
 dev.off()
 
 
