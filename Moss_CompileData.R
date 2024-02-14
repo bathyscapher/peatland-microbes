@@ -1,10 +1,7 @@
 ################################################################################
-################################################################################
-################################################################################
-################################################################################
 ### Peatland mosses: read taxa (ASV), add metadata and more
 ### Authors: Rachel Korn
-### korn@cumulonimbus.at University of Fribourg 2021
+### korn@cumulonimbus.at University of Fribourg 20219 to 2023
 ################################################################################
 
 
@@ -12,17 +9,14 @@ library("phyloseq")
 
 
 rm(list = ls())
+gc()
 
-
-################################################################################
-### Arguments
 
 source("Moss_readMetadataAndASV.R")
 
 
 ################################################################################
-### Read pitcher taxa
-
+### Read ASV
 asvDir <- "../smp_results"
 
 
@@ -49,8 +43,8 @@ rm(moss.a, euk.l)
 
 
 ## Save
-saveRDS(prok.a, "rds/Moss_prok.a.RDS")
-saveRDS(euk.a, "rds/Moss_euk.a.RDS")
+# saveRDS(prok.a, "rds/Moss_prok.a.RDS")
+# saveRDS(euk.a, "rds/Moss_euk.a.RDS")
 
 
 ### Merge both
@@ -69,7 +63,7 @@ moss
 
 
 ### Save
-saveRDS(moss, "rds/Moss_moss.RDS")
+# saveRDS(moss, "rds/Moss_moss.RDS")
 
 
 ### Export taxa table
@@ -85,11 +79,5 @@ taxa_otus <- taxa_otus[do.call(order, taxa_otus[, c(2:7)]), ]
 
 
 
-# write.table(moss_taxa_otus, "Korn_et_al_Taxa-table.csv",row.names = FALSE)
+# write.table(taxa_otus, "Korn_et_al_Taxa-table.csv", row.names = FALSE)
 
-
-
-################################################################################
-################################################################################
-################################################################################
-################################################################################

@@ -1,10 +1,5 @@
-################################################################################
-################################################################################
-################################################################################
-################################################################################
-### SMP Moss Microbiome
-### Author: korn@cumulonimbus.at University of Fribourg 2021
-################################################################################
+# SMP Moss Microbiome ##########################################################
+## Author: korn@cumulonimbus.at University of Fribourg 2021 - 2023 #############
 
 
 library("phyloseq")
@@ -18,105 +13,127 @@ library("reshape2")
 
 
 rm(list = ls())
+gc()
 
 
-################################################################################
+color_scheme <- c("#7EC8E3", "#B6D7A8", "#B4B4B4", "#FFD966", "#C9A0DC") # LT-LM-LV-LE-CB
+
+
 ## Moss data  #################################################################
 moss.pa <- readRDS("rds/Moss_prok.a.RDS")
 moss.ea <- readRDS("rds/Moss_euk.a.RDS")
-moss <- readRDS("rds/Moss_smp.RDS")
+moss <- readRDS("rds/Moss_moss.RDS")
 
 
-
-sample_data(moss.pa)$Site <- ordered(sample_data(moss.pa)$Site,
-                                     levels = c("LT", "LM", "LV", "LE", "CB"))
-sample_data(moss.ea)$Site <- ordered(sample_data(moss.ea)$Site,
-                                     levels = c("LT", "LM", "LV", "LE", "CB"))
+sample_data(moss)$Site <- ordered(sample_data(moss)$Site,
+                                  levels = c("LT", "LM", "LV", "LE", "CB"))
 
 
-################################################################################
 ## Convert ps to df ###########################################################
-tax.m <- as.data.frame(moss@tax_table@.Data)
-otu.m <- as.data.frame(t(otu_table(moss)))
+tax <- as.data.frame(tax_table(moss))
+otu <- as.data.frame(t(otu_table(moss)))
+# summary(rownames(tax) == rownames(otu))
 
-tax.otu.m <- merge(tax.m, otu.m, by = 0, all = TRUE)
-rownames(tax.otu.m) <- tax.otu.m$Row.names
-names(tax.otu.m)[1] <- "Taxa"
-
-
-rm(tax.m, otu.m)
+tax.otu <- merge(tax, otu, by = 0, all = TRUE)
+rownames(tax.otu) <- tax.otu$Row.names
+names(tax.otu)[1] <- "Taxa"
 
 
-################################################################################
+rm(tax, otu)
+
+
 ## Plot taxa ##################################################################
-tax.otu.m[, -c(1:7)] <- log1p(tax.otu.m[, -c(1:7)])
+tax.otu[, -c(1:7)] <- log1p(tax.otu[, -c(1:7)])
 
 
-tax.otu.m.m <- reshape2::melt(tax.otu.m, id.vars = c("Taxa", "Domain",
-                                                     "Phylum", "Class",
-                                                     "Order", "Family",
-                                                     "Genus"),
-                              variable.name = "FullID", value.name = "Count")
-tax.otu.m.m$Site <- substr(tax.otu.m.m$FullID, 1, 2)
-tax.otu.m.m$Site <- ordered(tax.otu.m.m$Site,
+tax.otu$CB <- rowSums(tax.otu[grepl("CB", names(tax.otu))])
+tax.otu$LE <- rowSums(tax.otu[grepl("LE", names(tax.otu))])
+tax.otu$LM <- rowSums(tax.otu[grepl("LM", names(tax.otu))])
+tax.otu$LT <- rowSums(tax.otu[grepl("LT", names(tax.otu))])
+tax.otu$LV <- rowSums(tax.otu[grepl("LV", names(tax.otu))])
+
+
+tax.otu.agg <- tax.otu[colnames(tax.otu) %in%
+                         c("Domain", "Phylum", "LT", "LM", "LV", "LE", "CB")]
+
+
+tax.otu.agg <- reshape2::melt(tax.otu.agg, id.vars = c("Domain", "Phylum"),
+                              variable.name = "Site",
+                              value.name = "Count")
+tax.otu.agg <- aggregate(Count ~ Domain + Phylum + Site, tax.otu.agg, sum)
+
+tax.otu.agg$Site <- ordered(tax.otu.agg$Site,
                             levels = c("LT", "LM", "LV", "LE", "CB"))
-tax.otu.m.m$Domain[tax.otu.m.m$Domain == "Archaea"] <- "A."
+tax.otu.agg$Domain[tax.otu.agg$Domain == "Archaea"] <- "A."
 
 
 ## Reorder taxonomically
-tax.otu.m.m[, c(2:7)] <- lapply(tax.otu.m.m[, c(2:7)], as.factor)
+tax.otu.agg[, c(1:2)] <- lapply(tax.otu.agg[, c(1:2)], as.factor)
+str(tax.otu.agg)
 
 
-tax <- c("Euryarchaeota", "Nanoarchaeota", ## Archaea
-         ## Proteobacteria
-         "Bdellovibrionota", "Campilobacterota", "Desulfobacterota",
-         "Proteobacteria",
-         "Myxococcota", ## Deltaproteobacteria
-         "Planctomycetota", "Verrucomicrobiota", ## PVC group
-         "Gemmatimonadota", ## FCB group
-         ## Singles
-         "Acidobacteriota", "Bacteroidota", "Chloroflexi", "Dependentiae",
-         ## Terrabacteria
-         "Actinobacteriota", "Armatimonadota", "Cyanobacteria", "Firmicutes",
-         ## ?
-         "WPS-2", "FCPU426", "Patescibacteria", "MBNT15",
-         "Elusimicrobiota", "Spirochaetota", "NB1-j", "Abditibacteriota",
-         "RCP2-54", "Latescibacterota", "Sumerlaeota", "Fibrobacterota", "WS4",
-         "Deinococcota", "SAR324_clade(Marine_group_B)",
-         ### Eukaryotes ###
-         ## Amoeba
-         "Amoebozoa_ph", "Dictyostelia", "Gracilipodida", "Schizoplasmodiida",
-         "Protosteliida",
-         ## SAR:Heterokonta/Stramenopiles
-         "Bicosoecida", "Ochrophyta_ph", "Diatomea", "Hyphochytriomycetes",
-         "MAST-3", "MAST-12", "Peronosporomycetes",
-         "Cercozoa", ## SAR: Rhizaria
-         ## Harosa:Alveolata
-         "Ciliophora", "Dinoflagellata", "Protalveolata",
-         "Euglenozoa", "Heterolobosea", "Parabasalia", ## Excavata
-         ## Algae
-         "Chlorophyta_ph", "Cryptophyceae_ph", "Phragmoplastophyta",
-         "Klebsormidiophyceae",
-         "Incertae_Sedis",
-         "Nucleariidae_and_Fonticula_group", ## Holomycota
-         ## Fungi
-         "Ascomycota", "Basidiomycota", "Blastocladiomycota", "Chytridiomycota",
-         "Cryptomycota", "LKM15", "Zoopagomycota",
-         "Holozoa_ph", ## Choanozoa
-         "Aphelidea", ## Sister group of fungi
-         ## Metazoa
-         "Annelida", "Platyhelminthes", "Nematozoa", "Rotifera", "Tardigrada",
-         "Gastrotricha", "Arthropoda")
+tax <- c(
+  ## Archaea
+  "Euryarchaeota", "Nanoarchaeota",
+  ## Proteobacteria
+  "Bdellovibrionota", "Desulfobacterota", "Proteobacteria",
+  "SAR324_clade(Marine_group_B)",
+  ## Deltaproteobacteria
+  "Myxococcota",
+  ## PVC group
+  "Planctomycetota", "Verrucomicrobiota",
+  ## FCB group
+  "Gemmatimonadota",
+  ## Singles
+  "Acidobacteriota", "Bacteroidota", "Chloroflexi", "Dependentiae",
+  ## Terrabacteria
+  "Actinobacteriota", "Armatimonadota", "Cyanobacteria", "Firmicutes",
+  ## ?
+  "WPS-2", "FCPU426", "Patescibacteria", "MBNT15",
+  "Elusimicrobiota", "Spirochaetota", "NB1-j", "Abditibacteriota",
+  "RCP2-54", "Latescibacterota", "Sumerlaeota", "Fibrobacterota", "WS4",
+  "Deinococcota",
+  ### Eukaryotes ###
+  ## Amoebazoa
+  "Amoebozoa_ph", "Dictyostelia", "Gracilipodida", "Myxogastria",
+  "Schizoplasmodiida", "Protosteliida",
+  ## SAR: Heterokonta/Stramenopiles
+  "Bicosoecida", "Ochrophyta_ph", "Diatomea", "Hyphochytriomycetes",
+  "MAST-3", "MAST-12", "Peronosporomycetes",
+  ## SAR: Rhizaria
+  "Cercozoa",
+  ## Harosa: Alveolata
+  "Apicomplexa", "Ciliophora", "Dinoflagellata", "Protalveolata",
+  ## Excavata
+  "Euglenozoa", "Heterolobosea", "Parabasalia",
+  ## Algae
+  "Chlorophyta_ph", "Cryptophyceae_ph", "Phragmoplastophyta",
+  "Klebsormidiophyceae",
+  "Incertae_Sedis",
+  ## Holomycota
+  "Nucleariidae_and_Fonticula_group",
+  ## Fungi
+  "Ascomycota", "Basidiomycota", "Chytridiomycota",
+  "Cryptomycota", "LKM15", "Microsporidia", "Mucoromycota", "Zoopagomycota",
+  ## Sister group of fungi
+  "Aphelidea",
+  ## Choanozoa
+  "Holozoa_ph",
+  ## Metazoa
+  "Annelida", "Platyhelminthes", "Nematozoa", "Rotifera", "Tardigrada",
+  "Gastrotricha", "Arthropoda"
+)
 
 
-## Pronounce small values even more
-tax.otu.m.m$Count[tax.otu.m.m$Count < 0.01 & tax.otu.m.m$Count > 0] <- 0.01
-summary(tax.otu.m.m$Count)
+## Pronounce small values as they are invisible otherwise
+tax.otu.agg$Count[tax.otu.agg$Count < 0.1 & tax.otu.agg$Count > 0] <- 0.1
 
 
 ## Plot
-ggplot(tax.otu.m.m, aes(x = factor(Phylum, level = rev(tax)), y = Count,
-                        fill = Site)) +
+ggplot(tax.otu.agg,
+       aes(x = factor(Phylum, level = rev(tax)),
+           y = Count,
+           fill = Site)) +
   geom_bar(stat = "identity") +
   facet_grid(Domain ~ Site, scales = "free", space = "free_y") +
   ylab(expression(paste(ln[e], "(Abundance + 1) [%]"))) +
@@ -124,20 +141,21 @@ ggplot(tax.otu.m.m, aes(x = factor(Phylum, level = rev(tax)), y = Count,
   coord_flip() +
   theme_bw(base_size = 14) +
   theme(legend.position = "none",
-        axis.text.x = element_text(angle = 45, vjust = 1))
-# ggsave("Moss_Phyla.pdf", width = 8.27, height = 11.69)
+        axis.text.x = element_text(angle = 45, vjust = 1)) +
+  scale_fill_manual(values = color_scheme)
+# ggsave("img/Moss_Phyla.pdf", width = 8.27, height = 11.69)
 
 
 ### Inspect taxa and frequencies
-df <- tax.otu.m[tax.otu.m$Phylum == "Ascomycota", ]
+df <- tax.otu[tax.otu$Domain == "Bacteria", ]
+sort(unique(tax.otu$Phylum))
 summary(colSums(df[, -c(1:7)]) == 0)
 
 unique(df$Genus)
 
 
-################################################################################
-### Alpha-diversity  ###########################################################
-## Prokaryotes
+## Alpha-diversity  ############################################################
+### Prokaryotes ############################################################
 otu.p <- data.frame(
   otu_table(transform_sample_counts(
     moss.pa, function(abund) {1 * (abund > 0)})
@@ -172,20 +190,23 @@ otus <- merge(otus, meta.m, by = "FullID", all = TRUE)
 # otus$FullID == rownames(meta.m)
 otus$Domain <- ordered(otus$Domain, levels = c("Prokaryotes", "Eukaryotes"))
 
+otus$Site <- ordered(otus$Site, levels = c("LT", "LM", "LV", "LE", "CB"))
+
 
 ## Alpha-diversity
 ggplot(otus, aes(x = Site, y = alpha)) +
   geom_boxplot(color = "black", size = 0.2, outlier.shape = NA) +
-  geom_jitter(aes(fill = Site), height = 0, width = 0.3, size = 2, shape = 21) +
+  geom_jitter(aes(fill = Site),  height = 0, width = 0.3, size = 2, shape = 21) +
   stat_summary(aes(group = Site), fun = mean,
-               colour = "black", geom = "point", fill = "gray",
+               colour = "black", geom = "point",
                shape = 8, size = 3.5, show.legend = FALSE) +
   facet_grid(Domain ~ Site, scales = "free") +
+  scale_fill_manual(values = color_scheme) +
   xlab("") +
   ylab(expression(alpha-diversity)) +
   theme(legend.position = "none", legend.direction = "horizontal",
         axis.text.x = element_blank())
-# ggsave("Moss_Alpha.pdf", width = 11.69, height = 5)
+# ggsave("img/Moss_Alpha.pdf", width = 11.69, height = 5)
 
 
 ## Mean alpha-diversity by site and domain
@@ -194,13 +215,13 @@ aggregate(alpha ~ Site + Domain, data = otus, mean)
 
 ## Hypothesis test for difference of mean alpha between fen and raised bog sites
 ### Test for normality
-# pdf("Moss_QQNormAlpha.pdf", width = 11.69, height = 6)
+# pdf("img/Moss_QQNormAlpha.pdf", width = 11.69, height = 6)
 par(mfrow = c(1, 2))
 qqnorm(otus$alpha[otus$Domain == "Prokaryotes"], main = "Prokaryotes")
 qqline(otus$alpha[otus$Domain == "Prokaryotes"], lty = 2)
 qqnorm(otus$alpha[otus$Domain == "Eukaryotes"], main = "Eukaryotes", ylab = "")
 qqline(otus$alpha[otus$Domain == "Eukaryotes"], lty = 2)
-# dev.off()
+dev.off()
 
 
 ## One-way ANOVA followed by Tukey's HSD
@@ -223,6 +244,12 @@ TukeyHSD(res.aov)
 ## Prokaryotes
 set.seed(128252)
 
+
+sample_data(moss.pa)$Site <- ordered(sample_data(moss.pa)$Site,
+                                     levels = c("LT", "LM", "LV", "LE", "CB"))
+sample_data(moss.pa)$Sector <- as.factor(sample_data(moss.pa)$Sector)
+
+
 moss.pa.log <- transform_sample_counts(moss.pa,
                                        function(otu) {log1p(otu)})
 moss.nmds <- ordinate(moss.pa.log,
@@ -231,15 +258,17 @@ moss.nmds <- ordinate(moss.pa.log,
 moss.nmds
 
 
-nmds.prok <- plot_ordination(moss.pa.log, moss.nmds, shape = "Sector",
-                color = "Site", title = NULL, label = "FullID") +
-  stat_ellipse(aes(group = Site), type = "t", linetype = 2, size = 0.2) +
+nmds.prok <- plot_ordination(moss.pa.log, moss.nmds,
+                             color = "Site", shape = "Sector",
+                             title = NULL) +
+  stat_ellipse(aes(group = Site), type = "t", linetype = 2, linewidth = 0.2) +
   geom_point(size = 3) +
+  scale_colour_manual(values = color_scheme) +
   coord_fixed(ratio = 1) +
   theme(legend.position = "top", legend.direction = "horizontal",
         legend.box = "vertical", legend.margin = margin()) +
   xlim(-1, 0.9) +
-  ylim(-1, 0.5) +
+  ylim(-1, 0.6) +
   xlab("nMDS1") +
   ylab("nMDS2")
 
@@ -247,30 +276,36 @@ nmds.prok <- plot_ordination(moss.pa.log, moss.nmds, shape = "Sector",
 ## Eukaryotes
 set.seed(128252)
 
+
+sample_data(moss.ea)$Site <- ordered(sample_data(moss.ea)$Site,
+                                     levels = c("LT", "LM", "LV", "LE", "CB"))
+sample_data(moss.ea)$Sector <- as.factor(sample_data(moss.ea)$Sector)
+
+
 moss.ea.log <- transform_sample_counts(moss.ea, function(otu) {log1p(otu)})
 moss.nmds <- ordinate(moss.ea.log, method = "NMDS", distance = "bray", k = 2,
                       trymax = 50)
 moss.nmds
 
 
-nmds.euk <- plot_ordination(moss.ea.log, moss.nmds, shape = "Sector",
-                             color = "Site", title = NULL, label = "FullID") +
-  stat_ellipse(aes(group = Site), type = "t", linetype = 2, size = 0.2) +
+nmds.euk <- plot_ordination(moss.ea.log, moss.nmds,
+                            color = "Site", shape = "Sector",
+                            title = NULL) +
+  stat_ellipse(aes(group = Site), type = "t", linetype = 2, linewidth = 0.2) +
   geom_point(size = 3) +
+  scale_colour_manual(values = color_scheme) +
   coord_fixed(ratio = 1) +
   theme(legend.position = "top", legend.direction = "horizontal",
         legend.box = "vertical", legend.margin = margin()) +
   xlim(-1, 0.9) +
-  ylim(-1, 0.5) +
+  ylim(-1, 0.6) +
   xlab("nMDS1") +
   ylab("")
 
 
 ## Arrange plots side by side and export
 nmds.both <- arrangeGrob(nmds.prok, nmds.euk, nrow = 1)
-
-
- # ggsave("Moss_nMDS.pdf", nmds.both, width = 11.69, height = 8.27)
+# ggsave("img/Moss_nMDS.pdf", nmds.both, width = 11.69, height = 8.27)
 
 
 ################################################################################
@@ -331,7 +366,9 @@ mossMeta <- merge(mossMeta, weight[, c(1, 5)], by = "FullID")
 rownames(mossMeta) <- mossMeta$FullID
 
 
-xy.mds <- cmdscale(dist(mossMeta[, c(14:15)]), eig = TRUE, k = 1)
+xy.mds <- cmdscale(dist(mossMeta[names(mossMeta) %in% c("SiteSectorCentroidsX",
+                                                        "SiteSectorCentroidsY")]),
+                   eig = TRUE, k = 1)
 xy.mds$GOF # should be > 0.8
 distance <- as.data.frame(xy.mds$points)
 colnames(distance) <- "Distance"
@@ -348,7 +385,7 @@ ggplot(xy.mds.df) +
   scale_x_continuous(breaks = seq(-1, 1, 1)) +
   xlab("") +
   ylab("MDS 1")
-# ggsave("Moss_Distance_1D.pdf", width = 3, height = 6)
+# ggsave("img/Moss_Distance_1D.pdf", width = 3, height = 6)
 
 
 mossMeta <- merge(mossMeta, distance, by = "FullID")
@@ -374,7 +411,7 @@ det.nmds
 stressplot(det.nmds)
 
 
-# pdf("Moss_DetnMDS.pdf", height = 8.27, width = 8.27)
+# pdf("img/Moss_DetnMDS.pdf", height = 8.27, width = 8.27)
 margin(5, 5, 10, 5)
 plot(det.nmds)
 # dev.off()
@@ -431,6 +468,7 @@ moss.euk.nmds
 stressplot(moss.euk.nmds)
 
 
+
 moss.euk.nmds.sc <- as.data.frame(scores(moss.euk.nmds,
                                          display = "site"))
 names(moss.euk.nmds.sc)[1] <- "mb.moss.euk"
@@ -480,9 +518,7 @@ par(mfrow = c(2, 1))
 boxplot(mossMeta[, -c(1:9, 11:15)])
 abline(h = 0, lty = 2, col = "gray")
 
-
 mossMeta[, -c(1:9, 11:15)] <- apply(mossMeta[, -c(1:9, 11:15)], 2, scale)
-
 
 boxplot(mossMeta[, -c(1:9, 11:15)])
 abline(h = 0, lty = 2, col = "gray")

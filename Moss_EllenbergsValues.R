@@ -16,14 +16,17 @@ theme_set(theme_bw(base_size = 20) +
 
 
 rm(list = ls())
+gc()
 
-
-setwd("~/repos/EVA/EllenbergsValuesAutomaton/")
+# clone from https://github.com/bathyscapher/EVA
 
 
 ################################################################################
 ### Read Ellenberg's values
-ev <- lapply(list.files(pattern = "Ellenberg.*.csv"), read.delim, sep = "\t")
+ev <- lapply(list.files(path = "../EVA/EllenbergsValuesAutomaton/",
+                        pattern = "Ellenberg.*.csv",
+                        full.names = TRUE),
+             read.delim, sep = "\t")
 
 
 ## Convert list of data.frames to data.frame
@@ -44,15 +47,12 @@ ev[, c(2:8)] <- as.data.frame(apply(ev[, c(2:8)], 2, as.integer))
 
 ################################################################################
 ### Read vegetation list
-setwd("~/repos/peatland-microbes/")
-
-
 vascu <- read.table("csv/VascularPlants.csv", sep = "\t", header = TRUE,
                     quote = "")
 
 ## Delete certain entries (trees, non-bog species)
 vascu <- vascu[!grepl("Lycopus europaeus L.|Angelica sylvestris L.|Pinus sylvestris L.|Epilobium hirsutum L.|Anthoxanthum odoratum L.|Betula pubescens Ehrh.|Festuca rubra aggr.|Menyanthes trifoliata L.|Melampyrum pratense L.|Picea abies \\(L.\\) H. Karst.|Pinus mugo subsp. uncinata \\(DC.\\) Domin|Filipendula ulmaria \\(L.\\) Maxim.|Calluna vulgaris \\(L.\\) Hull",
-                    vascu$Taxon), ]
+                      vascu$Taxon), ]
 
 
 vascu <- vascu[!(vascu$Taxon == "Potentilla erecta (L.) Raeusch." &
@@ -62,14 +62,15 @@ vascu <- vascu[!(vascu$Taxon == "Potentilla erecta (L.) Raeusch." &
                    vascu$Taxon == "Silene flos-cuculi (L.) Clairv." &
                    vascu$Site == "LM" |
                    vascu$Taxon == "Scirpus sylvaticus L." & vascu$Site == "LM"),
-               ]
+]
 
 
-bryo <- read.table("csv/Bryophyta.csv", sep = "\t", header = TRUE, quote = "")
+bryo <- read.table("csv/Bryophyta.csv",
+                   sep = "\t", header = TRUE, quote = "")
 
 
 bryo2 <- read.table("csv/Bryophyta_2018.csv",
-                   sep = "\t", header = TRUE, quote = "")
+                    sep = "\t", header = TRUE, quote = "")
 
 
 plants <- rbind(vascu, bryo, bryo2)
@@ -127,28 +128,29 @@ cols <- dim(plants)[2] + 1
 
 ## Add empty columns for Ellenberg's values to species list
 plants$CheckPoint <- NA
-plants[names(ev[2:11])] <- NA
+plants[names(ev[-1])] <- NA
 
 
 ################################################################################
 ### Fuzzy match by species. Set cost to conserve names (no insertions and
 ### substitutions, deletions allowed)
 gottem <- lapply(plants$SpeciesShort, agrep, x = ev$Name, value = FALSE,
-                 max.distance = c(all = 1,
-                                  deletions = 2,
-                                  insertions = 2,
-                                  substitutions = 0))
+                 max.distance = list(all = 1,
+                                     deletions = 2,
+                                     insertions = 2,
+                                     substitutions = 0))
 
 
 ################################################################################
 ### Fill Ellenberg's values into plants
 EVA <- function(matches, index){
-  if(length(matches) == 1)
-    {plants[index, cols:(cols + 10)] <- ev[matches, ]}
-  else
-  {plants[index, cols:(cols + 10)] <- c(paste(length(matches), "match(es)"),
-                                          rep(NA, 10))}
+  if(length(matches) == 1) {
+    plants[index, cols:(cols + 10)] <- ev[matches, ]
+  } else {
+    plants[index, cols:(cols + 10)] <- c(paste(length(matches), "match(es)"),
+                                         rep(NA, 10))
   }
+}
 
 
 ## Update target data.frame
@@ -279,8 +281,6 @@ plants[plants$SpeciesShort == "Vaccinium oxycoccos", cols:(cols + 10)] <-
 
 ## See remaining mismatches
 mismatches <- plants[grep("match", plants$CheckPoint), ]
-
-
 levels(as.factor(mismatches$SpeciesShort))
 
 
@@ -301,6 +301,9 @@ plants.m$EV <- as.factor(plants.m$EV)
 
 
 ### Plot
+color_scheme <- c("#7EC8E3", "#B6D7A8", "#B4B4B4", "#FFD966", "#C9A0DC") # LT-LM-LV-LE-CB
+
+
 plants.m$Site <- ordered(plants.m$Site,
                          levels = c("LT", "LM", "LV", "LE", "CB"))
 
@@ -310,16 +313,17 @@ plants.m <- plants.m[plants.m$EV != "Continentality" & plants.m$EV != "Salt", ]
 
 
 ggplot(plants.m, aes(x = Site, y = Value)) +
-  geom_boxplot(size = 0.2, outlier.shape = NA) +
+  geom_boxplot(size = 0.3, outlier.shape = NA) +
   geom_jitter(aes(color = Site), na.rm = TRUE, pch = 21,
               height = 0, width = 0.3, size = 2) +
   facet_grid( ~ EV, scales = "free") +
+  scale_colour_manual(values = color_scheme) +
   theme(legend.position = "top", legend.direction = "horizontal",
         axis.text.x = element_blank()) +
   scale_y_continuous(breaks = seq(0, 10, 2)) +
   xlab("") +
   ylab("Ellenberg's indicator value")
-ggsave("Moss_EV.pdf", width = 11.69, height = 5)
+# ggsave("img/Moss_EV.pdf", width = 11.69, height = 5)
 
 
 ### Summarize EV by site
@@ -328,10 +332,3 @@ names(ev.mean)[1] <- "Site"
 
 
 write.table(ev.mean, "csv/Moss_EVMeans.csv", sep = "\t", row.names = FALSE)
-
-
-################################################################################
-################################################################################
-################################################################################
-################################################################################
-

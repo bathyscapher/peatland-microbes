@@ -1,7 +1,4 @@
 ################################################################################
-################################################################################
-################################################################################
-################################################################################
 ### Peatland microbes: read ASV
 ### Authors: Rachel Korn
 ### korn@cumulonimbus.at University of Fribourg 2021
@@ -14,8 +11,7 @@
 
 
 ################################################################################
-readTaxa <- function (primer = c("16S", "18S"),
-                      merge.mosses = c(TRUE, FALSE)) {
+readTaxa <- function (primer = c("16S", "18S")) {
 
 
   ##############################################################################
@@ -26,10 +22,7 @@ readTaxa <- function (primer = c("16S", "18S"),
                                    sep = "/"))
 
     taxa <- readRDS(paste(asvDir, "SMP_16S_reseq/taxa_SMP16S.rds", sep = "/"))
-  }
-
-
-  if (primer == "18S") {
+  } else if (primer == "18S") {
     seqtab.nochim <- readRDS(paste(asvDir,
                                    "SMP_18S_reseq/seqtab.nochim_SMP18S.rds",
                                    sep = "/"))
@@ -87,122 +80,62 @@ readTaxa <- function (primer = c("16S", "18S"),
 
   ##############################################################################
   ### Remove unidentified taxa
+
   if(primer == "16S") {
     moss.id <- subset_taxa(moss,
                            !(Domain %in% c("unknown", "Eukaryota", NA) |
                                Phylum %in% c("Eukaryota_unclassified",
                                              NA)))
-  }
-
-  if(primer == "18S") {
+  } else if(primer == "18S") {
     moss.id <- subset_taxa(moss, !(Domain %in% c("Bacteria", "unknown") |
                                      Phylum %in% c("Eukaryota_unclassified",
                                                    NA)))
   }
 
-  ## Remove empty taxa (there should be none)
-  # sum(taxa_sums(moss.s) == 0)
+  ## Remove empty taxa
+  # sum(taxa_sums(moss.id) == 0)
   moss.id <- prune_taxa(taxa_sums(moss.id) > 0, moss.id)
 
   message(paste("Note:",
-                sum(taxa_sums(moss.id) == 0),
-                "empty taxa were removed after removing unidentified taxa."))
+                sum(taxa_sums(moss) == 0),
+                "empty taxa were removed after removing mis- and unidentified taxa."))
 
 
   message(paste(round(100 - 100 / ntaxa(moss) * ntaxa(moss.id),
                       digits = 2),
-                "% unidentified",
+                "% mis- and unidentified",
                 ifelse(primer == "16S",
                        "prokaryote",
                        "eukaryote"),
                 "taxa were removed from the samples."))
 
 
-  ### Remove spurious taxa
+  ### Remove non-target taxa
   if(primer == "16S") {
     moss.s <- subset_taxa(moss.id,
                           !(Order %in% c("Chloroplast") |
                               Family %in% c("Mitochondria")))
-  }
-
-  if(primer == "18S") {
+  } else if(primer == "18S") {
     moss.s <- subset_taxa(moss.id,
-                          !(Phylum %in% c("Myxogastria",
-                                          "Apicomplexa",
-                                          "Neocallimastigomycota",
-                                          "Mollusca", "Vertebrata",
-                                          "Microsporidia",
-                                          "Mucoromycota",
-                                          "Archaeorhizomycetes") |
+                          !(Phylum %in% c("Mollusca", "Vertebrata") |
                               Class %in% c("Insecta", "Ellipura",
-                                           "Embryophyta", "Arachnida",
-                                           "Heterophyidae",
-                                           "Ichthyophonae",
-                                           "Arthropoda_unclassified",
-                                           "unclassified_Hexapoda",
-                                           "Ascomycota_unclassified",
-                                           "Agaricomycetes",
-                                           "Basidiomycota_unclassified",
-                                           "Exobasidiomycetes",
-                                           "Microbotryomycetes",
-                                           "Dothideomycetes",
-                                           "Pucciniomycetes",
-                                           "Spiculogloeomycetes",
-                                           "Ustilaginomycetes",
-                                           "Taphrinomycetes",
-                                           "Lecanoromycetes",
-                                           "Basidiomycota_unclassified",
-                                           "Sordariomycetes",
-                                           "Pezizomycetes",
-                                           "Entorrhizomycetes",
-                                           "Agaricostilbomycetes",
-                                           "Orbiliomycetes",
-                                           "Eurotiomycetes",
-                                           "Leotiomycetes",
-                                           "Entomophthoromycetes",
-                                           "Dacrymycetes") |
-                              Order %in% c("Filobasidiales",
-                                           "Spizellomycetales",
-                                           "Rhytismatales",
-                                           "Dothideomycetes",
-                                           "Mytilinidiales",
-                                           "Naohideales",
-                                           "Pleosporales",
-                                           "Kickxellales",
-                                           "Archaeorhizomycetes",
-                                           "Atractiellomycetes",
-                                           "Trichosporonales") |
-                              Family %in% c("Pleosporaceae",
-                                            "Mrakiaceae",
-                                            "Teratosphaeriaceae",
-                                            "Leotiaceae",
-                                            "Pleosporales_fa",
-                                            "Didymellaceae",
-                                            "Phaeosphaeriaceae",
-                                            "Rhynchogastremataceae",
-                                            "Phaeotremellaceae") |
-                              Genus %in% c("Lecophagus",
-                                           "Genolevuria",
-                                           "Trimorphomyces") |
-                              Phylum == "Arthropoda" & Class %in% NA |
-                              Phylum == "Ascomycota" & Class %in% NA |
-                              Phylum == "Basidiomycota"))
+                                           "Embryophyta", "Arachnida")) |
+                            Phylum == "Arthropoda" & Class %in% NA)
   }
 
 
 
   ## Remove empty taxa (there should be none)
-  if (sum(taxa_sums(moss.s) == 0)) {
+  if (any(taxa_sums(moss.s) == 0)) {
     message(paste("Warning:",
                   sum(taxa_sums(moss.s) == 0), "empty taxa were removed."))
     moss.s <- prune_taxa(taxa_sums(moss.s) > 0, moss.s)
   }
 
 
-
   message(paste(round(100 - 100 / ntaxa(moss.id) * ntaxa(moss.s),
                       digits = 2),
-                "% unidentified",
+                "% non-target",
                 ifelse(primer == "16S",
                        "prokaryote",
                        "eukaryote"),
