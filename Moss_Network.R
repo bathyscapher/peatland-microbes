@@ -1,7 +1,7 @@
 ################################################################################
 ### Peatland microbes network analysis
 ### Authors: Rachel Korn
-### korn@cumulonimbus.at University of Fribourg 2021 - 2023
+### korn@cumulonimbus.at University of Fribourg 2021 - 2024
 ################################################################################
 
 library("phyloseq")
@@ -112,6 +112,20 @@ summary(indval)
 
 
 sr <- data.frame(indval$str)
+
+
+### Export indicator species table
+sr.otus <- sr
+sr.otus$ASV <- rownames(sr.otus)
+sr.otus <- merge(sr.otus, otus.tax[, c(1:7)], by = "ASV")
+sr.otus[, 2:4] <- format(round(sr.otus[, 2:4], 2), nsmall = 3)
+
+
+# write.table(sr.otus, "csv/Mosses_IndicatorSpecies.csv", sep = "\t",
+#             row.names = FALSE)
+
+
+## Arrange for network analysis
 sr[sr < 0.7] <- NA
 sr$Acidic[!is.na(sr$Acidic)] <- "Acidic"
 sr$Moderate.acidic[!is.na(sr$Moderate.acidic)] <- "Moderate acidic"
@@ -121,6 +135,7 @@ sr$Strong.acidic[!is.na(sr$Strong.acidic)] <- "Strong acidic"
 sr$SoilReaction <- apply(sr, 1, function(x) x[!is.na(x)][1])
 sr <- sr["SoilReaction"]
 sr$ASV <- rownames(sr)
+
 
 sr <- sr[complete.cases(sr), ]
 table(sr)
@@ -148,11 +163,10 @@ otus.cor.p <- p.adjust(otus.cor.p, method = "BH")
 
 
 ## Positive and netagive cooccurence at given coefficient and p-value cutoff
-cor.cutoff <- 0.8
+cor.cutoff <- 0.7
 p.cutoff <- 0.005
 
 
-plot(otus.cor)
 otus.cor[which(otus.cor >= (- cor.cutoff) & otus.cor <= cor.cutoff)] <- 0
 otus.cor[which(otus.cor.p > p.cutoff)] <- 0
 diag(otus.cor) <- 0
@@ -162,7 +176,6 @@ diag(otus.cor) <- 0
 otus.cor <- otus.cor[which(rowSums(otus.cor) != 0), ]
 otus.cor <- otus.cor[, which(colSums(otus.cor) != 0)]
 dim(otus.cor)
-plot(otus.cor)
 
 
 ### Create a graph
@@ -209,37 +222,22 @@ E(g3)$sign <- ifelse(E(g3)$weight < 0,
 
 
 ### Add vertex attributes
+g3 <- set_vertex_attr(g3, "degree", value = degree(g3))
+
 g3 <- set_vertex_attr(g3, "ASV", value = otu.target$ASV)
 V(g3)$ASV
-
-g3 <- set_vertex_attr(g3, "Genus", value = otu.target$Genus)
-V(g3)$Genus
-V(g3)$name <- V(g3)$Genus
 
 g3 <- set_vertex_attr(g3, "Domain", value = otu.target$Domain)
 V(g3)$Domain
 
+g3 <- set_vertex_attr(g3, "Phylum", value = otu.target$Phylum)
+V(g3)$Phylum
+
+g3 <- set_vertex_attr(g3, "Genus", value = otu.target$Genus)
+V(g3)$Genus
+
 g3 <- set_vertex_attr(g3, "Abundance", value = sqrt(otu.target$Abundance))
 V(g3)$Abundance
-
-
-### Louvain community detection
-## Set negative edges to zero
-E(g3)$weight_pos <- ifelse(E(g3)$weight < 0,
-                           0,
-                           E(g3)$weight)
-E(g3)$weight_pos
-
-
-g3.louv <- cluster_louvain(g3, weights = E(g3)$weight_pos)
-length(g3.louv)
-sizes(g3.louv)
-table(sizes(g3.louv))
-membership(g3.louv)
-modularity(g3.louv)
-
-
-V(g3)$louvain_member <- paste0("louvain-", g3.louv$membership)
 
 
 ### Indicator species
@@ -254,19 +252,18 @@ write_graph(g3,
 
 
 ## Network statistics
+gsize(g3) # = ecount(g3)
 vcount(g3)
-ecount(g3)
+vertex_connectivity(g3)
 
-
+table(E(g3)$sign)
 table(V(g3)$Domain)
 table(V(g3)$SoilReaction)
+
 table(degree(g3))
-mean(degree(g3))
+g3.degree <- as.data.frame(table(degree(g3)))
 summary(degree(g3))
-
-
-## Negative and positive edges
-summary(otus.cor.m$rho > 0)
+barplot(sort(degree_distribution(g3)))
 
 
 ## Subnetworks
